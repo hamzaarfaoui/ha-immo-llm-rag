@@ -12,5 +12,5 @@ async def index():
     app_name = os.getenv("APP_NAME")
     app_version = os.getenv("APP_VERSION")
     return {
-        "message": "Welcome to "+app_name
+        "message": f"Welcome to {app_name} {app_version}"
     }
