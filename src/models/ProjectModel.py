@@ -1,3 +1,4 @@
+import inspect
 from .BaseDataModel import BaseDataModel
 from .db_schemes import Project
 from .enums.DataBaseEnums import DataBaseEnums
@@ -8,15 +9,36 @@ class ProjectModel(BaseDataModel):
         super().__init__(db_client=db_client)
         self.collection = self.db_client[DataBaseEnums.COLLECTION_PROJECT_NAME]
 
-    async def create_project(self, project: Project):
+    @classmethod
+    async def create_instance(cls, db_client: object):
+        instance = cls(db_client)
+        await instance.init_collection()
+        return instance
 
-        result = await self.collection.insert_one(project.dict(by_alias=True, exclude_unset=True))
+    async def init_collection(self):
+        all_collections = await self.db_client.list_collection_names()
+        if DataBaseEnums.COLLECTION_PROJECT_NAME not in all_collections:
+            self.collection = self.db_client[DataBaseEnums.COLLECTION_PROJECT_NAME]
+            indexes = Project.get_indexes()
+            for index in indexes:
+                await self.collection.create_index(
+                    index["key"],
+                    name=index["name"],
+                    unique=index["unique"]
+                )
+
+    async def create_project(self, project: Project):
+        print("DEBUG Project file:", inspect.getfile(project.__class__), project.__dict__)
+        print("DEBUG field project_id:", project.__class__.__fields__["project_id"])
+        doc = project.dict(by_alias=True, exclude_unset=True)
+        print("DEBUG doc inséré dans projects:", doc)
+        result = await self.collection.insert_one(doc)
         project.id = result.inserted_id
 
         return project
 
     async def get_project_or_create_one(self, project_id: str):
-
+        print("DEBUG get_project_or_create_one arg:", repr(project_id), type(project_id))
         record = await self.collection.find_one({
             "project_id": project_id 
         })
